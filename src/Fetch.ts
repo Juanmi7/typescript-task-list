@@ -47,7 +47,7 @@ export class Fetch {
         `Error al crear la tarea: ${response.status} ${response.statusText}`
       );
     }
-    const data: Data = await response.json();
+    const data: ITask = await response.json();
     return data;
   }
 
@@ -64,11 +64,11 @@ export class Fetch {
         `Error al actualizar la tarea: ${response.status} ${response.statusText}`
       );
     }
-    const data = await response.json();
+    const data:ITask = await response.json();
     return data;
   }
 
-  static async delete(id: PatchTask["id"]) {
+  static async delete(id: string) {
     const response = await fetch(`${this.BASE_URL}${id}`, {
       method: "DELETE",
     });
