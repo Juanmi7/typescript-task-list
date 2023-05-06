@@ -9,7 +9,7 @@
     "mock": "node Utils/tasksGenerator.js",
     "server": "json-server --watch db.json --port 8000",
     "ts": "tsc",
-    "build": "tsc && webpack --config webpack.config.js"
+    "build": "tsc && webpack --config webpack.config.js && postcss css/style.css -o css/style.min.css --use cssnano"
   },
   "author": "Antonio Cebrián (Ch3ssMaster)",
   "license": "MIT",
@@ -19,8 +19,11 @@
     "@faker-js/faker": "^7.6.0",
     "@types/eslint": "^8.37.0",
     "babel-loader": "^9.1.2",
+    "cssnano": "^6.0.1",
     "faker": "^6.6.6",
     "json-server": "^0.17.3",
+    "postcss": "^8.4.23",
+    "postcss-cli": "^10.1.0",
     "typescript": "^5.0.4",
     "webpack": "^5.82.0",
     "webpack-cli": "^5.0.2"
