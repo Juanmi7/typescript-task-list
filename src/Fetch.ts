@@ -52,7 +52,7 @@ export class Fetch {
   }
 
   static async update(task: PatchTask) {
-    const response = await fetch(`${this.BASE_URL}${task.id}`, {
+    const response = await fetch(`${this.BASE_URL}/${task.id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -69,7 +69,7 @@ export class Fetch {
   }
 
   static async delete(id: string) {
-    const response = await fetch(`${this.BASE_URL}${id}`, {
+    const response = await fetch(`${this.BASE_URL}/${id}`, {
       method: "DELETE",
     });
     if (!response.ok) {

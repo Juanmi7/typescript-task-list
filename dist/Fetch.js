@@ -48,7 +48,7 @@ class Fetch {
     }
     static update(task) {
         return __awaiter(this, void 0, void 0, function* () {
-            const response = yield fetch(`${this.BASE_URL}${task.id}`, {
+            const response = yield fetch(`${this.BASE_URL}/${task.id}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -64,7 +64,7 @@ class Fetch {
     }
     static delete(id) {
         return __awaiter(this, void 0, void 0, function* () {
-            const response = yield fetch(`${this.BASE_URL}${id}`, {
+            const response = yield fetch(`${this.BASE_URL}/${id}`, {
                 method: "DELETE",
             });
             if (!response.ok) {

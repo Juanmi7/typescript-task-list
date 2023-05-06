@@ -1,4 +1,4 @@
-import { Fetch, Data } from "./Fetch.js";
+import { Fetch, Data, ITask, PatchTask } from "./Fetch.js";
 
 /**
  * @class App
@@ -28,12 +28,14 @@ export class App {
   input: HTMLInputElement | null;
   arrow: HTMLDivElement | null;
   table: HTMLTableSectionElement | null;
+  text: string | null;
   constructor() {
     this.alert = document.querySelector(".alert");
     this.close = this.alert?.firstElementChild as HTMLElement;
     this.input = document.querySelector("input");
     this.arrow = document.querySelector(".arrow");
     this.table = document.querySelector("tbody");
+    this.text = null;
   }
   init = async () => {
     //eventos
@@ -62,7 +64,8 @@ export class App {
     }
     if (this.arrow !== null) {
       //Añadir una nueva tarea
-      this.arrow.addEventListener("click", () => {
+      this.arrow.addEventListener("click", (e: Event) => {
+        e.preventDefault();
         this.addTask(this.input, this.alert);
       });
     }
@@ -152,32 +155,69 @@ export class App {
       ?.nextElementSibling as HTMLElement;
     let text: string | null = task?.innerHTML as string | null;
     const row = (task as HTMLElement)?.parentNode?.parentNode;
-    if (text?.includes("<del>")) {
-      text = task?.firstElementChild?.textContent as string;
-      task.innerHTML = text;
-      // Para validar que existe el elemento, antes de acceder a sus propiedades
-      if (row instanceof HTMLElement) {
-        row.setAttribute("data-completed", "false");
-      }
-    } else {
-      task.innerHTML = `<del>${text}</del>`;
-      if (row instanceof HTMLElement) {
-        row.setAttribute("data-completed", "true");
+    // if (text?.includes("<del>")) {
+    //   text = task?.firstElementChild?.textContent as string;
+    //   task.innerHTML = text;
+    //   // Para validar que existe el elemento, antes de acceder a sus propiedades
+    //   if (row instanceof HTMLElement) {
+    //     row.setAttribute("data-completed", "false");
+    //   }
+    // } else {
+    //   task.innerHTML = `<del>${text}</del>`;
+    //   if (row instanceof HTMLElement) {
+    //     row.setAttribute("data-completed", "true");
+    //   }
+    // }
+    // en lugar de tachar la tarea en el html, la tachamos/destachamos en la base de datos
+    if (row instanceof HTMLElement) {
+      let id = row.getAttribute("id");
+      if (id !== null) {
+        let task: PatchTask = {
+          id: id,
+          isDone: !text?.includes("<del>"),
+        };
+        Fetch.update(task);
       }
     }
   };
   //Añadir nueva tarea
-  addTask = (input: HTMLInputElement | null, alert: HTMLDivElement | null) => {
+  addTask = async (
+    input: HTMLInputElement | null,
+    alert: HTMLDivElement | null
+  ) => {
     let text: string;
     if (input?.value.trim() === "") {
       input.value = "";
       alert?.classList.remove("dismissible");
     } else if (input !== null) {
       text = input?.value;
-      document
-        .querySelector("tbody")
-        ?.appendChild(this.generateRow(this.idGenerator(), text, false));
-      input.value = "";
+      // document
+      //   .querySelector("tbody")
+      //   ?.appendChild(this.generateRow(this.idGenerator(), text, false));
+      // input.value = "";
+      // en lugar de añadir directamente la tarea al html, la añadimos a la base de datos
+      // y luego la renderizamos
+      let task: ITask = {
+        id: this.idGenerator(),
+        title: text,
+        isDone: false,
+      };
+      try {
+        let result = await Fetch.create(task);
+        if (result) {
+          // Fetch all tasks
+          let tasks: Data = await Fetch.getAll();
+          // Render all tasks
+          this.renderTasks(tasks);
+        } else {
+          throw new Error("No se ha podido añadir la tarea");
+        }
+      } catch (error: any) {
+        if (alert) {
+          alert.textContent = error.message;
+          alert.classList.remove("dismissible");
+        }
+      }
     }
   };
   //Activar el modo edición
@@ -194,6 +234,14 @@ export class App {
       )?.previousElementSibling?.lastElementChild as HTMLElement;
       task.focus();
     }
+
+    // Comprobar si la tarea está tachada, antes de guardar el texto
+    if (task.innerHTML.includes("<del>")) {
+      this.text = task?.firstElementChild?.textContent as string;
+    } else {
+      this.text = task?.textContent as string;
+    }
+
     task.classList.add("editable");
     document.addEventListener("keydown", (e) => {
       if (e.code == "Enter" || e.code == "NumpadEnter" || e.code == "Escape") {
@@ -202,7 +250,7 @@ export class App {
     });
   };
   //Desactivar el modo edición
-  editModeOff = (
+  editModeOff = async (
     e: Event & { currentTarget: HTMLElement; target: HTMLElement }
   ) => {
     let task = e.currentTarget;
@@ -210,23 +258,77 @@ export class App {
       this.removeRow(e, true);
     } else {
       task.classList.remove("editable");
-      task.innerHTML = this.clearWhitespaces(task.innerHTML);
-      if (task.innerHTML === "") {
+      // task.innerHTML = this.clearWhitespaces(task.innerHTML);
+      let text: string = this.clearWhitespaces(task.innerHTML);
+      if (text === "") {
         this.removeRow(e, true);
+      } else if (text !== this.text) {
+        let id: string | null = (
+          (task.parentNode as HTMLElement)?.parentNode as HTMLElement
+        )?.getAttribute("id");
+        if (id !== null) {
+          let newTask: PatchTask = {
+            id: id,
+            title: text,
+          };
+          try {
+            let result = await Fetch.update(newTask);
+            if (result) {
+              // Fetch all tasks
+              let tasks: Data = await Fetch.getAll();
+              // Render all tasks
+              this.renderTasks(tasks);
+            } else {
+              throw new Error("No se ha podido actualizar la tarea");
+            }
+          } catch (error: any) {
+            if (this.alert) {
+              this.alert.textContent = error.message;
+              this.alert.classList.remove("dismissible");
+            }
+          }
+        }
       }
     }
   };
   //Eliminación de tarea
-  removeRow = (e: Event & { target: HTMLElement }, editionMode: boolean) => {
+  removeRow = async (
+    e: Event & { target: HTMLElement },
+    editionMode: boolean
+  ) => {
+    let rowId: string | null;
     if (editionMode) {
-      (
+      // (
+      //   (e.target?.parentNode as HTMLElement)?.parentNode as HTMLElement
+      // )?.remove();
+      rowId = (
         (e.target?.parentNode as HTMLElement)?.parentNode as HTMLElement
-      )?.remove();
+      )?.getAttribute("id");
     } else {
-      (
+      // (
+      //   ((e.target?.parentNode as HTMLElement)?.parentNode as HTMLElement)
+      //     ?.parentNode as HTMLElement
+      // ).remove();
+      rowId = (
         ((e.target?.parentNode as HTMLElement)?.parentNode as HTMLElement)
           ?.parentNode as HTMLElement
-      ).remove();
+      )?.getAttribute("id");
+    }
+    try {
+      if (rowId !== null) {
+        await Fetch.delete(rowId);
+        // Fetch all tasks
+        let tasks: Data = await Fetch.getAll();
+        // Render all tasks
+        this.renderTasks(tasks);
+      } else {
+        throw new Error("No se ha podido eliminar la tarea, id no encontrado");
+      }
+    } catch (error: any) {
+      if (this.alert) {
+        this.alert.textContent = error.message;
+        this.alert.classList.remove("dismissible");
+      }
     }
   };
   //Eliminación de espacios en blanco

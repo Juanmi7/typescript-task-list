@@ -60,7 +60,8 @@ export class App {
             }
             if (this.arrow !== null) {
                 //Añadir una nueva tarea
-                this.arrow.addEventListener("click", () => {
+                this.arrow.addEventListener("click", (e) => {
+                    e.preventDefault();
                     this.addTask(this.input, this.alert);
                 });
             }
@@ -128,28 +129,37 @@ export class App {
         };
         // //Tachado de tarea
         this.crossOut = (e) => {
-            var _a, _b, _c;
+            var _a, _b;
             let task = (_a = e.target) === null || _a === void 0 ? void 0 : _a.nextElementSibling;
             let text = task === null || task === void 0 ? void 0 : task.innerHTML;
             const row = (_b = task === null || task === void 0 ? void 0 : task.parentNode) === null || _b === void 0 ? void 0 : _b.parentNode;
-            if (text === null || text === void 0 ? void 0 : text.includes("<del>")) {
-                text = (_c = task === null || task === void 0 ? void 0 : task.firstElementChild) === null || _c === void 0 ? void 0 : _c.textContent;
-                task.innerHTML = text;
-                // Para validar que existe el elemento, antes de acceder a sus propiedades
-                if (row instanceof HTMLElement) {
-                    row.setAttribute("data-completed", "false");
-                }
-            }
-            else {
-                task.innerHTML = `<del>${text}</del>`;
-                if (row instanceof HTMLElement) {
-                    row.setAttribute("data-completed", "true");
+            // if (text?.includes("<del>")) {
+            //   text = task?.firstElementChild?.textContent as string;
+            //   task.innerHTML = text;
+            //   // Para validar que existe el elemento, antes de acceder a sus propiedades
+            //   if (row instanceof HTMLElement) {
+            //     row.setAttribute("data-completed", "false");
+            //   }
+            // } else {
+            //   task.innerHTML = `<del>${text}</del>`;
+            //   if (row instanceof HTMLElement) {
+            //     row.setAttribute("data-completed", "true");
+            //   }
+            // }
+            // en lugar de tachar la tarea en el html, la tachamos/destachamos en la base de datos
+            if (row instanceof HTMLElement) {
+                let id = row.getAttribute("id");
+                if (id !== null) {
+                    let task = {
+                        id: id,
+                        isDone: !(text === null || text === void 0 ? void 0 : text.includes("<del>")),
+                    };
+                    Fetch.update(task);
                 }
             }
         };
         //Añadir nueva tarea
-        this.addTask = (input, alert) => {
-            var _a;
+        this.addTask = (input, alert) => __awaiter(this, void 0, void 0, function* () {
             let text;
             if ((input === null || input === void 0 ? void 0 : input.value.trim()) === "") {
                 input.value = "";
@@ -157,14 +167,40 @@ export class App {
             }
             else if (input !== null) {
                 text = input === null || input === void 0 ? void 0 : input.value;
-                (_a = document
-                    .querySelector("tbody")) === null || _a === void 0 ? void 0 : _a.appendChild(this.generateRow(this.idGenerator(), text, false));
-                input.value = "";
+                // document
+                //   .querySelector("tbody")
+                //   ?.appendChild(this.generateRow(this.idGenerator(), text, false));
+                // input.value = "";
+                // en lugar de añadir directamente la tarea al html, la añadimos a la base de datos
+                // y luego la renderizamos
+                let task = {
+                    id: this.idGenerator(),
+                    title: text,
+                    isDone: false,
+                };
+                try {
+                    let result = yield Fetch.create(task);
+                    if (result) {
+                        // Fetch all tasks
+                        let tasks = yield Fetch.getAll();
+                        // Render all tasks
+                        this.renderTasks(tasks);
+                    }
+                    else {
+                        throw new Error("No se ha podido añadir la tarea");
+                    }
+                }
+                catch (error) {
+                    if (alert) {
+                        alert.textContent = error.message;
+                        alert.classList.remove("dismissible");
+                    }
+                }
             }
-        };
+        });
         //Activar el modo edición
         this.editModeOn = (e, onFocus) => {
-            var _a, _b, _c, _d;
+            var _a, _b, _c, _d, _e;
             let task;
             if (onFocus) {
                 task = e.currentTarget;
@@ -172,6 +208,13 @@ export class App {
             else {
                 task = (_d = (_c = (_b = (_a = e.currentTarget) === null || _a === void 0 ? void 0 : _a.parentNode) === null || _b === void 0 ? void 0 : _b.parentNode) === null || _c === void 0 ? void 0 : _c.previousElementSibling) === null || _d === void 0 ? void 0 : _d.lastElementChild;
                 task.focus();
+            }
+            // Comprobar si la tarea está tachada, antes de guardar el texto
+            if (task.innerHTML.includes("<del>")) {
+                this.text = (_e = task === null || task === void 0 ? void 0 : task.firstElementChild) === null || _e === void 0 ? void 0 : _e.textContent;
+            }
+            else {
+                this.text = task === null || task === void 0 ? void 0 : task.textContent;
             }
             task.classList.add("editable");
             document.addEventListener("keydown", (e) => {
@@ -181,29 +224,84 @@ export class App {
             });
         };
         //Desactivar el modo edición
-        this.editModeOff = (e) => {
+        this.editModeOff = (e) => __awaiter(this, void 0, void 0, function* () {
+            var _b, _c;
             let task = e.currentTarget;
             if (task.innerHTML === "") {
                 this.removeRow(e, true);
             }
             else {
                 task.classList.remove("editable");
-                task.innerHTML = this.clearWhitespaces(task.innerHTML);
-                if (task.innerHTML === "") {
+                // task.innerHTML = this.clearWhitespaces(task.innerHTML);
+                let text = this.clearWhitespaces(task.innerHTML);
+                if (text === "") {
                     this.removeRow(e, true);
                 }
+                else if (text !== this.text) {
+                    let id = (_c = (_b = task.parentNode) === null || _b === void 0 ? void 0 : _b.parentNode) === null || _c === void 0 ? void 0 : _c.getAttribute("id");
+                    if (id !== null) {
+                        let newTask = {
+                            id: id,
+                            title: text,
+                        };
+                        try {
+                            let result = yield Fetch.update(newTask);
+                            if (result) {
+                                // Fetch all tasks
+                                let tasks = yield Fetch.getAll();
+                                // Render all tasks
+                                this.renderTasks(tasks);
+                            }
+                            else {
+                                throw new Error("No se ha podido actualizar la tarea");
+                            }
+                        }
+                        catch (error) {
+                            if (this.alert) {
+                                this.alert.textContent = error.message;
+                                this.alert.classList.remove("dismissible");
+                            }
+                        }
+                    }
+                }
             }
-        };
+        });
         //Eliminación de tarea
-        this.removeRow = (e, editionMode) => {
-            var _a, _b, _c, _d, _e, _f;
+        this.removeRow = (e, editionMode) => __awaiter(this, void 0, void 0, function* () {
+            var _d, _e, _f, _g, _h, _j, _k;
+            let rowId;
             if (editionMode) {
-                (_c = (_b = (_a = e.target) === null || _a === void 0 ? void 0 : _a.parentNode) === null || _b === void 0 ? void 0 : _b.parentNode) === null || _c === void 0 ? void 0 : _c.remove();
+                // (
+                //   (e.target?.parentNode as HTMLElement)?.parentNode as HTMLElement
+                // )?.remove();
+                rowId = (_f = (_e = (_d = e.target) === null || _d === void 0 ? void 0 : _d.parentNode) === null || _e === void 0 ? void 0 : _e.parentNode) === null || _f === void 0 ? void 0 : _f.getAttribute("id");
             }
             else {
-                ((_f = (_e = (_d = e.target) === null || _d === void 0 ? void 0 : _d.parentNode) === null || _e === void 0 ? void 0 : _e.parentNode) === null || _f === void 0 ? void 0 : _f.parentNode).remove();
+                // (
+                //   ((e.target?.parentNode as HTMLElement)?.parentNode as HTMLElement)
+                //     ?.parentNode as HTMLElement
+                // ).remove();
+                rowId = (_k = (_j = (_h = (_g = e.target) === null || _g === void 0 ? void 0 : _g.parentNode) === null || _h === void 0 ? void 0 : _h.parentNode) === null || _j === void 0 ? void 0 : _j.parentNode) === null || _k === void 0 ? void 0 : _k.getAttribute("id");
             }
-        };
+            try {
+                if (rowId !== null) {
+                    yield Fetch.delete(rowId);
+                    // Fetch all tasks
+                    let tasks = yield Fetch.getAll();
+                    // Render all tasks
+                    this.renderTasks(tasks);
+                }
+                else {
+                    throw new Error("No se ha podido eliminar la tarea, id no encontrado");
+                }
+            }
+            catch (error) {
+                if (this.alert) {
+                    this.alert.textContent = error.message;
+                    this.alert.classList.remove("dismissible");
+                }
+            }
+        });
         //Eliminación de espacios en blanco
         this.clearWhitespaces = (text) => {
             return text.replace(new RegExp(/&nbsp;/, "g"), "").trim();
@@ -217,5 +315,6 @@ export class App {
         this.input = document.querySelector("input");
         this.arrow = document.querySelector(".arrow");
         this.table = document.querySelector("tbody");
+        this.text = null;
     }
 }
