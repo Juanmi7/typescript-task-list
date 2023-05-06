@@ -23,24 +23,25 @@ import { Fetch, Data, ITask, PatchTask } from "./Fetch.js";
  *
  */
 export class App {
-  alert: HTMLDivElement | null;
-  close: HTMLSpanElement | null;
-  input: HTMLInputElement | null;
-  arrow: HTMLDivElement | null;
-  table: HTMLTableSectionElement | null;
-  text: string | null;
-  allTasks: Data | null;
-  buttons: NodeListOf<HTMLButtonElement> | null;
+  //Propiedades
+  alert: HTMLDivElement | null; //Alerta de error
+  close: HTMLSpanElement | null; //Botón para cerrar la alerta
+  input: HTMLInputElement | null; //Input para añadir una nueva tarea
+  arrow: HTMLDivElement | null; //Botón para guardar una nueva tarea
+  table: HTMLTableSectionElement | null; //Tabla de tareas
+  buttons: NodeListOf<HTMLButtonElement> | null; //Botones para filtrar las tareas
+  allTasks: Data | null; //Todas las tareas
+  //Métodos
   constructor() {
     this.alert = document.querySelector(".alert");
     this.close = this.alert?.firstElementChild as HTMLElement;
     this.input = document.querySelector("input");
     this.arrow = document.querySelector(".arrow");
     this.table = document.querySelector("tbody");
-    this.text = null;
-    this.allTasks = null;
     this.buttons = document.querySelectorAll(".main .header button");
+    this.allTasks = null;
   }
+  //Inicializa la aplicación
   init = async () => {
     //eventos
     //Cerrar la alerta en el botón con la X
@@ -87,11 +88,12 @@ export class App {
         });
       });
     }
-    // Fetch all tasks
+    // Obtener todas las tareas
     this.allTasks = await Fetch.getAll();
-    // Render all tasks
+    // Renderizar todas las tareas
     this.renderTasks(this.allTasks as Data);
   };
+  // Mostrar las tareas en función del filtro
   filterTasks = async (filter: string) => {
     switch (filter) {
       case "All":
@@ -122,35 +124,35 @@ export class App {
         throw new Error("Filter not found");
     }
   };
-  // //prepara una plantilla HTML, y la actualiza con contenido dinámico
+  // genera una fila de la tabla, añañadiendo los eventos correspondientes
   generateRow = (id: string, title: string, done: boolean) => {
     let newRow = document.createElement("tr");
     newRow.setAttribute("id", id);
     title = done ? `<del>${title}</del>` : title;
     newRow.innerHTML = `
-<td>
-  <i class="fa-solid fa-circle-check"></i>
-  <span contenteditable="true" class="task">${title}</span>
-</td>
-<td>
-  <span class="fa-stack fa-2x">
-    <i class="fa-solid fa-square fa-stack-2x"></i>
-    <i class="fa-solid fa-stack-1x fa-pencil fa-inverse"></i>
-  </span>
-</td>
-<td>
-  <span class="fa-stack fa-2x">
-    <i class="fa-solid fa-square fa-stack-2x"></i>
-    <i class="fa-solid fa-stack-1x fa-trash fa-inverse"></i>
-  </span>
-</td>
-  `;
+      <td>
+        <i class="fa-solid fa-circle-check"></i>
+        <span contenteditable="true" class="task">${title}</span>
+      </td>
+      <td>
+        <span class="fa-stack fa-2x">
+          <i class="fa-solid fa-square fa-stack-2x"></i>
+          <i class="fa-solid fa-stack-1x fa-pencil fa-inverse"></i>
+        </span>
+      </td>
+      <td>
+        <span class="fa-stack fa-2x">
+          <i class="fa-solid fa-square fa-stack-2x"></i>
+          <i class="fa-solid fa-stack-1x fa-trash fa-inverse"></i>
+        </span>
+      </td>
+    `;
     //Tachar una tarea realizada
     newRow.firstElementChild?.firstElementChild?.addEventListener(
       "click",
       (e: Event) => this.crossOut(e)
     );
-    //Activar el modo edición desde la tarea
+    //Activar el modo edición desde la tarea (click en el texto)
     newRow.firstElementChild?.lastElementChild?.addEventListener(
       "focus",
       (e: Event) => {
@@ -216,15 +218,17 @@ export class App {
     //     row.setAttribute("data-completed", "true");
     //   }
     // }
-    // en lugar de tachar la tarea en el html, la tachamos/destachamos en la base de datos
+    // en lugar de tachar la tarea en el html, modificamos el estado de la tarea en la base de datos
     if (row instanceof HTMLElement) {
       let id = row.getAttribute("id");
+      // Buscamos el id de la tarea en allTasks y cambiamos su estado
+      let task = this.allTasks?.find((task) => task.id === id);
       if (id !== null) {
-        let task: PatchTask = {
+        let newTask: PatchTask = {
           id: id,
-          isDone: !text?.includes("<del>"),
+          isDone: !task?.isDone,
         };
-        Fetch.update(task);
+        Fetch.update(newTask);
       }
     }
   };
@@ -284,11 +288,11 @@ export class App {
     }
 
     // Comprobar si la tarea está tachada, antes de guardar el texto
-    if (task.innerHTML.includes("<del>")) {
-      this.text = task?.firstElementChild?.textContent as string;
-    } else {
-      this.text = task?.textContent as string;
-    }
+    // if (task.innerHTML.includes("<del>")) {
+    //   this.text = task?.firstElementChild?.textContent as string;
+    // } else {
+    //   this.text = task?.textContent as string;
+    // }
     task.classList.add("editable");
     document.addEventListener("keydown", (e) => {
       if (e.code == "Enter" || e.code == "NumpadEnter" || e.code == "Escape") {
@@ -301,25 +305,27 @@ export class App {
     e: Event & { currentTarget: HTMLElement; target: HTMLElement }
   ) => {
     let task = e.currentTarget;
-    if (task.innerHTML === "") {
+    // Quitar los espacios en blanco del texto
+    let text: string | null = this.clearWhitespaces(task.innerHTML);
+    // Eliminar las etiquetas <del> y </del> del texto antes de compararlo con el texto original
+    const regex = /<\/?del>/g;
+    let textWithoutDelTags = text?.replace(regex, "");
+    if (textWithoutDelTags === "") {
       this.removeRow(e, true);
     } else {
       task.classList.remove("editable");
-      // task.innerHTML = this.clearWhitespaces(task.innerHTML);
-      let text: string = this.clearWhitespaces(task.innerHTML);
-      // eliminar las etiquetas <del> y </del> del texto antes de compararlo con el texto original
-      const regex = /<\/?del>/g;
-      const textWithoutDelTags = text.replace(regex, "");
-      if (text === "") {
-        this.removeRow(e, true);
-      } else if (textWithoutDelTags !== this.text) {
-        let id: string | null = (
-          (task.parentNode as HTMLElement)?.parentNode as HTMLElement
-        )?.getAttribute("id");
-        if (id !== null) {
+      // Obtenemos el id de la tarea
+      let id: string | null = (
+        (task.parentNode as HTMLElement)?.parentNode as HTMLElement
+      )?.getAttribute("id");
+      if (id !== null) {
+        // Buscar la tarea en allTasks
+        let originalTask = this.allTasks?.find((task) => task.id === id);
+        // Si el texto es distinto al original, actualizamos la tarea
+        if (textWithoutDelTags !== originalTask?.title) {
           let newTask: PatchTask = {
             id: id,
-            title: text,
+            title: textWithoutDelTags,
           };
           try {
             let result = await Fetch.update(newTask);

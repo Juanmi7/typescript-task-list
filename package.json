@@ -6,14 +6,23 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "json-server --watch db.json --port 8000"
+    "mock": "node Utils/tasksGenerator.js",
+    "server": "json-server --watch db.json --port 8000",
+    "ts": "tsc",
+    "build": "tsc && webpack --config webpack.config.js"
   },
   "author": "Antonio Cebrián (Ch3ssMaster)",
   "license": "MIT",
   "devDependencies": {
+    "@babel/core": "^7.21.8",
+    "@babel/preset-env": "^7.21.5",
     "@faker-js/faker": "^7.6.0",
+    "@types/eslint": "^8.37.0",
+    "babel-loader": "^9.1.2",
     "faker": "^6.6.6",
     "json-server": "^0.17.3",
-    "typescript": "^5.0.4"
+    "typescript": "^5.0.4",
+    "webpack": "^5.82.0",
+    "webpack-cli": "^5.0.2"
   }
 }

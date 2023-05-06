@@ -31,8 +31,10 @@ import { Fetch } from "./Fetch.js";
  *
  */
 export class App {
+    //Métodos
     constructor() {
         var _a;
+        //Inicializa la aplicación
         this.init = () => __awaiter(this, void 0, void 0, function* () {
             //eventos
             //Cerrar la alerta en el botón con la X
@@ -79,11 +81,12 @@ export class App {
                     });
                 });
             }
-            // Fetch all tasks
+            // Obtener todas las tareas
             this.allTasks = yield Fetch.getAll();
-            // Render all tasks
+            // Renderizar todas las tareas
             this.renderTasks(this.allTasks);
         });
+        // Mostrar las tareas en función del filtro
         this.filterTasks = (filter) => __awaiter(this, void 0, void 0, function* () {
             var _b, _c;
             switch (filter) {
@@ -111,33 +114,33 @@ export class App {
                     throw new Error("Filter not found");
             }
         });
-        // //prepara una plantilla HTML, y la actualiza con contenido dinámico
+        // genera una fila de la tabla, añañadiendo los eventos correspondientes
         this.generateRow = (id, title, done) => {
             var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
             let newRow = document.createElement("tr");
             newRow.setAttribute("id", id);
             title = done ? `<del>${title}</del>` : title;
             newRow.innerHTML = `
-<td>
-  <i class="fa-solid fa-circle-check"></i>
-  <span contenteditable="true" class="task">${title}</span>
-</td>
-<td>
-  <span class="fa-stack fa-2x">
-    <i class="fa-solid fa-square fa-stack-2x"></i>
-    <i class="fa-solid fa-stack-1x fa-pencil fa-inverse"></i>
-  </span>
-</td>
-<td>
-  <span class="fa-stack fa-2x">
-    <i class="fa-solid fa-square fa-stack-2x"></i>
-    <i class="fa-solid fa-stack-1x fa-trash fa-inverse"></i>
-  </span>
-</td>
-  `;
+      <td>
+        <i class="fa-solid fa-circle-check"></i>
+        <span contenteditable="true" class="task">${title}</span>
+      </td>
+      <td>
+        <span class="fa-stack fa-2x">
+          <i class="fa-solid fa-square fa-stack-2x"></i>
+          <i class="fa-solid fa-stack-1x fa-pencil fa-inverse"></i>
+        </span>
+      </td>
+      <td>
+        <span class="fa-stack fa-2x">
+          <i class="fa-solid fa-square fa-stack-2x"></i>
+          <i class="fa-solid fa-stack-1x fa-trash fa-inverse"></i>
+        </span>
+      </td>
+    `;
             //Tachar una tarea realizada
             (_b = (_a = newRow.firstElementChild) === null || _a === void 0 ? void 0 : _a.firstElementChild) === null || _b === void 0 ? void 0 : _b.addEventListener("click", (e) => this.crossOut(e));
-            //Activar el modo edición desde la tarea
+            //Activar el modo edición desde la tarea (click en el texto)
             (_d = (_c = newRow.firstElementChild) === null || _c === void 0 ? void 0 : _c.lastElementChild) === null || _d === void 0 ? void 0 : _d.addEventListener("focus", (e) => {
                 let currentEvent = e;
                 this.editModeOn(currentEvent, true);
@@ -170,7 +173,7 @@ export class App {
         };
         // //Tachado de tarea
         this.crossOut = (e) => {
-            var _a, _b;
+            var _a, _b, _c;
             let task = (_a = e.target) === null || _a === void 0 ? void 0 : _a.nextElementSibling;
             let text = task === null || task === void 0 ? void 0 : task.innerHTML;
             const row = (_b = task === null || task === void 0 ? void 0 : task.parentNode) === null || _b === void 0 ? void 0 : _b.parentNode;
@@ -187,15 +190,17 @@ export class App {
             //     row.setAttribute("data-completed", "true");
             //   }
             // }
-            // en lugar de tachar la tarea en el html, la tachamos/destachamos en la base de datos
+            // en lugar de tachar la tarea en el html, modificamos el estado de la tarea en la base de datos
             if (row instanceof HTMLElement) {
                 let id = row.getAttribute("id");
+                // Buscamos el id de la tarea en allTasks y cambiamos su estado
+                let task = (_c = this.allTasks) === null || _c === void 0 ? void 0 : _c.find((task) => task.id === id);
                 if (id !== null) {
-                    let task = {
+                    let newTask = {
                         id: id,
-                        isDone: !(text === null || text === void 0 ? void 0 : text.includes("<del>")),
+                        isDone: !(task === null || task === void 0 ? void 0 : task.isDone),
                     };
-                    Fetch.update(task);
+                    Fetch.update(newTask);
                 }
             }
         };
@@ -241,7 +246,7 @@ export class App {
         });
         //Activar el modo edición
         this.editModeOn = (e, onFocus) => {
-            var _a, _b, _c, _d, _e;
+            var _a, _b, _c, _d;
             let task;
             if (onFocus) {
                 task = e.currentTarget;
@@ -251,12 +256,11 @@ export class App {
                 task.focus();
             }
             // Comprobar si la tarea está tachada, antes de guardar el texto
-            if (task.innerHTML.includes("<del>")) {
-                this.text = (_e = task === null || task === void 0 ? void 0 : task.firstElementChild) === null || _e === void 0 ? void 0 : _e.textContent;
-            }
-            else {
-                this.text = task === null || task === void 0 ? void 0 : task.textContent;
-            }
+            // if (task.innerHTML.includes("<del>")) {
+            //   this.text = task?.firstElementChild?.textContent as string;
+            // } else {
+            //   this.text = task?.textContent as string;
+            // }
             task.classList.add("editable");
             document.addEventListener("keydown", (e) => {
                 if (e.code == "Enter" || e.code == "NumpadEnter" || e.code == "Escape") {
@@ -266,26 +270,28 @@ export class App {
         };
         //Desactivar el modo edición
         this.editModeOff = (e) => __awaiter(this, void 0, void 0, function* () {
-            var _d, _e;
+            var _d, _e, _f;
             let task = e.currentTarget;
-            if (task.innerHTML === "") {
+            // Quitar los espacios en blanco del texto
+            let text = this.clearWhitespaces(task.innerHTML);
+            // Eliminar las etiquetas <del> y </del> del texto antes de compararlo con el texto original
+            const regex = /<\/?del>/g;
+            let textWithoutDelTags = text === null || text === void 0 ? void 0 : text.replace(regex, "");
+            if (textWithoutDelTags === "") {
                 this.removeRow(e, true);
             }
             else {
                 task.classList.remove("editable");
-                // task.innerHTML = this.clearWhitespaces(task.innerHTML);
-                let text = this.clearWhitespaces(task.innerHTML);
-                const regex = /<\/?del>/g;
-                const textWithoutDelTags = text.replace(regex, "");
-                if (text === "") {
-                    this.removeRow(e, true);
-                }
-                else if (textWithoutDelTags !== this.text) {
-                    let id = (_e = (_d = task.parentNode) === null || _d === void 0 ? void 0 : _d.parentNode) === null || _e === void 0 ? void 0 : _e.getAttribute("id");
-                    if (id !== null) {
+                // Obtenemos el id de la tarea
+                let id = (_e = (_d = task.parentNode) === null || _d === void 0 ? void 0 : _d.parentNode) === null || _e === void 0 ? void 0 : _e.getAttribute("id");
+                if (id !== null) {
+                    // Buscar la tarea en allTasks
+                    let originalTask = (_f = this.allTasks) === null || _f === void 0 ? void 0 : _f.find((task) => task.id === id);
+                    // Si el texto es distinto al original, actualizamos la tarea
+                    if (textWithoutDelTags !== (originalTask === null || originalTask === void 0 ? void 0 : originalTask.title)) {
                         let newTask = {
                             id: id,
-                            title: text,
+                            title: textWithoutDelTags,
                         };
                         try {
                             let result = yield Fetch.update(newTask);
@@ -311,20 +317,20 @@ export class App {
         });
         //Eliminación de tarea
         this.removeRow = (e, editionMode) => __awaiter(this, void 0, void 0, function* () {
-            var _f, _g, _h, _j, _k, _l, _m;
+            var _g, _h, _j, _k, _l, _m, _o;
             let rowId;
             if (editionMode) {
                 // (
                 //   (e.target?.parentNode as HTMLElement)?.parentNode as HTMLElement
                 // )?.remove();
-                rowId = (_h = (_g = (_f = e.target) === null || _f === void 0 ? void 0 : _f.parentNode) === null || _g === void 0 ? void 0 : _g.parentNode) === null || _h === void 0 ? void 0 : _h.getAttribute("id");
+                rowId = (_j = (_h = (_g = e.target) === null || _g === void 0 ? void 0 : _g.parentNode) === null || _h === void 0 ? void 0 : _h.parentNode) === null || _j === void 0 ? void 0 : _j.getAttribute("id");
             }
             else {
                 // (
                 //   ((e.target?.parentNode as HTMLElement)?.parentNode as HTMLElement)
                 //     ?.parentNode as HTMLElement
                 // ).remove();
-                rowId = (_m = (_l = (_k = (_j = e.target) === null || _j === void 0 ? void 0 : _j.parentNode) === null || _k === void 0 ? void 0 : _k.parentNode) === null || _l === void 0 ? void 0 : _l.parentNode) === null || _m === void 0 ? void 0 : _m.getAttribute("id");
+                rowId = (_o = (_m = (_l = (_k = e.target) === null || _k === void 0 ? void 0 : _k.parentNode) === null || _l === void 0 ? void 0 : _l.parentNode) === null || _m === void 0 ? void 0 : _m.parentNode) === null || _o === void 0 ? void 0 : _o.getAttribute("id");
             }
             try {
                 if (rowId !== null) {
@@ -358,8 +364,7 @@ export class App {
         this.input = document.querySelector("input");
         this.arrow = document.querySelector(".arrow");
         this.table = document.querySelector("tbody");
-        this.text = null;
-        this.allTasks = null;
         this.buttons = document.querySelectorAll(".main .header button");
+        this.allTasks = null;
     }
 }
