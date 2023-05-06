@@ -29,6 +29,8 @@ export class App {
   arrow: HTMLDivElement | null;
   table: HTMLTableSectionElement | null;
   text: string | null;
+  allTasks: Data | null;
+  buttons: NodeListOf<HTMLButtonElement> | null;
   constructor() {
     this.alert = document.querySelector(".alert");
     this.close = this.alert?.firstElementChild as HTMLElement;
@@ -36,6 +38,8 @@ export class App {
     this.arrow = document.querySelector(".arrow");
     this.table = document.querySelector("tbody");
     this.text = null;
+    this.allTasks = null;
+    this.buttons = document.querySelectorAll(".main .header button");
   }
   init = async () => {
     //eventos
@@ -62,17 +66,61 @@ export class App {
         }
       });
     }
+    //Añadir una nueva tarea
     if (this.arrow !== null) {
-      //Añadir una nueva tarea
       this.arrow.addEventListener("click", (e: Event) => {
         e.preventDefault();
         this.addTask(this.input, this.alert);
       });
     }
+    // Filtrar las tareas
+    if (this.buttons !== null) {
+      this.buttons.forEach((button, _, allButtons) => {
+        button.addEventListener("click", () => {
+          allButtons.forEach((button) => {
+            if (button.classList.contains("active")) {
+              button.classList.remove("active");
+            }
+          });
+          button.classList.add("active");
+          this.filterTasks(button.textContent as string);
+        });
+      });
+    }
     // Fetch all tasks
-    let tasks: Data = await Fetch.getAll();
+    this.allTasks = await Fetch.getAll();
     // Render all tasks
-    this.renderTasks(tasks);
+    this.renderTasks(this.allTasks as Data);
+  };
+  filterTasks = async (filter: string) => {
+    switch (filter) {
+      case "All":
+        if (this.allTasks !== null && this.table !== null) {
+          this.table.innerHTML = "";
+          this.renderTasks(this.allTasks as Data);
+        }
+        break;
+      case "Completed":
+        if (this.allTasks !== null && this.table !== null) {
+          let completedTasks: Data = this.allTasks?.filter(
+            (task: ITask) => task.isDone
+          );
+          this.table.innerHTML = "";
+          this.renderTasks(completedTasks);
+        }
+        break;
+      case "Uncompleted":
+        if (this.allTasks !== null && this.table !== null) {
+          let uncompletedTasks: Data = this.allTasks?.filter(
+            (task: ITask) => !task.isDone
+          );
+          this.table.innerHTML = "";
+          this.renderTasks(uncompletedTasks);
+        }
+        break;
+      default:
+        throw new Error("Filter not found");
+    }
   };
   // //prepara una plantilla HTML, y la actualiza con contenido dinámico
   generateRow = (id: string, title: string, done: boolean) => {
@@ -206,9 +254,9 @@ export class App {
         let result = await Fetch.create(task);
         if (result) {
           // Fetch all tasks
-          let tasks: Data = await Fetch.getAll();
+          this.allTasks = await Fetch.getAll();
           // Render all tasks
-          this.renderTasks(tasks);
+          this.renderTasks(this.allTasks);
         } else {
           throw new Error("No se ha podido añadir la tarea");
         }
@@ -241,7 +289,6 @@ export class App {
     } else {
       this.text = task?.textContent as string;
     }
-
     task.classList.add("editable");
     document.addEventListener("keydown", (e) => {
       if (e.code == "Enter" || e.code == "NumpadEnter" || e.code == "Escape") {
@@ -260,9 +307,12 @@ export class App {
       task.classList.remove("editable");
       // task.innerHTML = this.clearWhitespaces(task.innerHTML);
       let text: string = this.clearWhitespaces(task.innerHTML);
+      // eliminar las etiquetas <del> y </del> del texto antes de compararlo con el texto original
+      const regex = /<\/?del>/g;
+      const textWithoutDelTags = text.replace(regex, "");
       if (text === "") {
         this.removeRow(e, true);
-      } else if (text !== this.text) {
+      } else if (textWithoutDelTags !== this.text) {
         let id: string | null = (
           (task.parentNode as HTMLElement)?.parentNode as HTMLElement
         )?.getAttribute("id");
@@ -275,9 +325,9 @@ export class App {
             let result = await Fetch.update(newTask);
             if (result) {
               // Fetch all tasks
-              let tasks: Data = await Fetch.getAll();
+              this.allTasks = await Fetch.getAll();
               // Render all tasks
-              this.renderTasks(tasks);
+              this.renderTasks(this.allTasks);
             } else {
               throw new Error("No se ha podido actualizar la tarea");
             }
@@ -318,9 +368,9 @@ export class App {
       if (rowId !== null) {
         await Fetch.delete(rowId);
         // Fetch all tasks
-        let tasks: Data = await Fetch.getAll();
+        this.allTasks = await Fetch.getAll();
         // Render all tasks
-        this.renderTasks(tasks);
+        this.renderTasks(this.allTasks);
       } else {
         throw new Error("No se ha podido eliminar la tarea, id no encontrado");
       }

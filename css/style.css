@@ -11,6 +11,7 @@
   --light-blue: #bee5e3;
   --light-blue-hover: #a8d8d6;
   --medium-blue: #2980b9;
+  --medium-blue-hover: #2471a3;
   --pink: #d63384;
   --red: #dc3545;
   --red-hover: #bd2130;
@@ -65,6 +66,45 @@ h1 {
   background-color: white;
 }
 
+.main .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.main .header > div {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.main .header button {
+  background-color: var(--medium-blue);
+  color: white;
+  padding: 0.5em 1em;
+  font-size: 1.2rem;
+  transition: all 0.2s ease-in-out;
+}
+.main .header button:first-of-type {
+  border-top-left-radius: 0.3rem;
+  border-bottom-left-radius: 0.3rem;
+  border-right: 1px solid var(--blue-hover);
+}
+.main .header button:nth-child(2) {
+  border-left: 1px solid var(--light-blue-hover);
+  border-right: 1px solid var(--blue-hover);
+}
+.main .header button:nth-child(3) {
+  border-top-right-radius: 0.3rem;
+  border-bottom-right-radius: 0.3rem;
+  border-left: 1px solid var(--light-blue-hover);
+  /* border-right: 1px solid var(--blue-hover); */
+}
+.main .header button:hover,
+.main .header button:focus,
+.main .header button:active,
+.main .header button.active {
+  background-color: var(--medium-blue-hover);
+}
 .main .container {
   overflow-x: auto;
 }
@@ -287,7 +327,8 @@ table .fa-circle-check:hover {
   opacity: 0 !important;
   height: 0 !important;
   padding: 0 !important;
-  -webkit-transition: opacity 0.15s linear, height 0.3s linear, padding 0.3s linear;
+  -webkit-transition: opacity 0.15s linear, height 0.3s linear,
+    padding 0.3s linear;
   transition: opacity 0.15s linear, height 0.3s linear, padding 0.3s linear;
 }
 
@@ -298,4 +339,3 @@ table .fa-circle-check:hover {
   border-radius: 0.3rem;
   margin-top: 0.3em;
 }
-/*# sourceMappingURL=style.css.map */

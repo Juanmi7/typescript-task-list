@@ -58,17 +58,58 @@ export class App {
                     }
                 });
             }
+            //Añadir una nueva tarea
             if (this.arrow !== null) {
-                //Añadir una nueva tarea
                 this.arrow.addEventListener("click", (e) => {
                     e.preventDefault();
                     this.addTask(this.input, this.alert);
                 });
             }
+            // Filtrar las tareas
+            if (this.buttons !== null) {
+                this.buttons.forEach((button, _, allButtons) => {
+                    button.addEventListener("click", () => {
+                        allButtons.forEach((button) => {
+                            if (button.classList.contains("active")) {
+                                button.classList.remove("active");
+                            }
+                        });
+                        button.classList.add("active");
+                        this.filterTasks(button.textContent);
+                    });
+                });
+            }
             // Fetch all tasks
-            let tasks = yield Fetch.getAll();
+            this.allTasks = yield Fetch.getAll();
             // Render all tasks
-            this.renderTasks(tasks);
+            this.renderTasks(this.allTasks);
+        });
+        this.filterTasks = (filter) => __awaiter(this, void 0, void 0, function* () {
+            var _b, _c;
+            switch (filter) {
+                case "All":
+                    if (this.allTasks !== null && this.table !== null) {
+                        this.table.innerHTML = "";
+                        this.renderTasks(this.allTasks);
+                    }
+                    break;
+                case "Completed":
+                    if (this.allTasks !== null && this.table !== null) {
+                        let completedTasks = (_b = this.allTasks) === null || _b === void 0 ? void 0 : _b.filter((task) => task.isDone);
+                        this.table.innerHTML = "";
+                        this.renderTasks(completedTasks);
+                    }
+                    break;
+                case "Uncompleted":
+                    if (this.allTasks !== null && this.table !== null) {
+                        let uncompletedTasks = (_c = this.allTasks) === null || _c === void 0 ? void 0 : _c.filter((task) => !task.isDone);
+                        this.table.innerHTML = "";
+                        this.renderTasks(uncompletedTasks);
+                    }
+                    break;
+                default:
+                    throw new Error("Filter not found");
+            }
         });
         // //prepara una plantilla HTML, y la actualiza con contenido dinámico
         this.generateRow = (id, title, done) => {
@@ -182,9 +223,9 @@ export class App {
                     let result = yield Fetch.create(task);
                     if (result) {
                         // Fetch all tasks
-                        let tasks = yield Fetch.getAll();
+                        this.allTasks = yield Fetch.getAll();
                         // Render all tasks
-                        this.renderTasks(tasks);
+                        this.renderTasks(this.allTasks);
                     }
                     else {
                         throw new Error("No se ha podido añadir la tarea");
@@ -225,7 +266,7 @@ export class App {
         };
         //Desactivar el modo edición
         this.editModeOff = (e) => __awaiter(this, void 0, void 0, function* () {
-            var _b, _c;
+            var _d, _e;
             let task = e.currentTarget;
             if (task.innerHTML === "") {
                 this.removeRow(e, true);
@@ -234,11 +275,13 @@ export class App {
                 task.classList.remove("editable");
                 // task.innerHTML = this.clearWhitespaces(task.innerHTML);
                 let text = this.clearWhitespaces(task.innerHTML);
+                const regex = /<\/?del>/g;
+                const textWithoutDelTags = text.replace(regex, "");
                 if (text === "") {
                     this.removeRow(e, true);
                 }
-                else if (text !== this.text) {
-                    let id = (_c = (_b = task.parentNode) === null || _b === void 0 ? void 0 : _b.parentNode) === null || _c === void 0 ? void 0 : _c.getAttribute("id");
+                else if (textWithoutDelTags !== this.text) {
+                    let id = (_e = (_d = task.parentNode) === null || _d === void 0 ? void 0 : _d.parentNode) === null || _e === void 0 ? void 0 : _e.getAttribute("id");
                     if (id !== null) {
                         let newTask = {
                             id: id,
@@ -248,9 +291,9 @@ export class App {
                             let result = yield Fetch.update(newTask);
                             if (result) {
                                 // Fetch all tasks
-                                let tasks = yield Fetch.getAll();
+                                this.allTasks = yield Fetch.getAll();
                                 // Render all tasks
-                                this.renderTasks(tasks);
+                                this.renderTasks(this.allTasks);
                             }
                             else {
                                 throw new Error("No se ha podido actualizar la tarea");
@@ -268,28 +311,28 @@ export class App {
         });
         //Eliminación de tarea
         this.removeRow = (e, editionMode) => __awaiter(this, void 0, void 0, function* () {
-            var _d, _e, _f, _g, _h, _j, _k;
+            var _f, _g, _h, _j, _k, _l, _m;
             let rowId;
             if (editionMode) {
                 // (
                 //   (e.target?.parentNode as HTMLElement)?.parentNode as HTMLElement
                 // )?.remove();
-                rowId = (_f = (_e = (_d = e.target) === null || _d === void 0 ? void 0 : _d.parentNode) === null || _e === void 0 ? void 0 : _e.parentNode) === null || _f === void 0 ? void 0 : _f.getAttribute("id");
+                rowId = (_h = (_g = (_f = e.target) === null || _f === void 0 ? void 0 : _f.parentNode) === null || _g === void 0 ? void 0 : _g.parentNode) === null || _h === void 0 ? void 0 : _h.getAttribute("id");
             }
             else {
                 // (
                 //   ((e.target?.parentNode as HTMLElement)?.parentNode as HTMLElement)
                 //     ?.parentNode as HTMLElement
                 // ).remove();
-                rowId = (_k = (_j = (_h = (_g = e.target) === null || _g === void 0 ? void 0 : _g.parentNode) === null || _h === void 0 ? void 0 : _h.parentNode) === null || _j === void 0 ? void 0 : _j.parentNode) === null || _k === void 0 ? void 0 : _k.getAttribute("id");
+                rowId = (_m = (_l = (_k = (_j = e.target) === null || _j === void 0 ? void 0 : _j.parentNode) === null || _k === void 0 ? void 0 : _k.parentNode) === null || _l === void 0 ? void 0 : _l.parentNode) === null || _m === void 0 ? void 0 : _m.getAttribute("id");
             }
             try {
                 if (rowId !== null) {
                     yield Fetch.delete(rowId);
                     // Fetch all tasks
-                    let tasks = yield Fetch.getAll();
+                    this.allTasks = yield Fetch.getAll();
                     // Render all tasks
-                    this.renderTasks(tasks);
+                    this.renderTasks(this.allTasks);
                 }
                 else {
                     throw new Error("No se ha podido eliminar la tarea, id no encontrado");
@@ -316,5 +359,7 @@ export class App {
         this.arrow = document.querySelector(".arrow");
         this.table = document.querySelector("tbody");
         this.text = null;
+        this.allTasks = null;
+        this.buttons = document.querySelectorAll(".main .header button");
     }
 }
